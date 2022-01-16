@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Bootstrap Navbar Sidebar - Fixed to Left or Right</title>
+    <link rel="stylesheet"
+          id="theme_link"
+          href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.3.1/materia/bootstrap.min.css"/>
+    <link rel="stylesheet" href="./css/navbar-fixed-right.min.css">
+    <link rel="stylesheet" href="./css/navbar-fixed-left.min.css">
+    <link rel="stylesheet" href="./css/docs.css">
+    <script
+            src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+            integrity="sha256-pasqAKBDmFT4eHoN2ndd6lN370kFiGUFyTiUHWhU7k8="
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"></script>
+    <script src="./css/docs.js"></script>
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <style>
+        pre {
+            display: inline-block;
+            background-color: black;
+            border-radius: 3px;
+            padding: 0.1em 0.2em;
+            color: royalblue;
+        }
+        img {
+            width: "10px";
+            height: "10px";
+        }
+        p{
+            font-size: large;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-primary fixed-top p-1 ">
+        <a class="navbar-brand" href>CloudNativeAPP(BFF編)</a>
+        <div class="collapse navbar-collapse " style="line-height: 0.5em"> 
+            <ul class="navbar-nav" >
+                <li class="nav-item">
+                    <a class="nav-link" href="#1">1.AWS環境準備</a>
+                    <a class="nav-link" href="#2">2.プロジェクト作成</a>
+                    <ul>
+                        <a class="nav-link" href="#2-1">2-1.backendプロジェクト作成</a>
+                        <a class="nav-link" href="#2-2">2-2.bffプロジェクト作成</a>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 id="1">1.Producerアプリケーション実装</h1>
+        <p>
+            <ul>
+                <h1 id="1-1">1-1.Configクラス実装</h1>
+                <p>
+                    以下3つのConfigクラスを作成
+                    <table class="table">
+                        <tr>
+                            <th>クラス名</th>
+                            <th>役割</th>
+                            <th>ポイント</th>
+                        </tr>
+                        <tr>
+                            <td>MvcConfig</td>
+                            <td>SpringMVCの設定クラス</td>
+                            <td>
+                                RestControllerを利用するため、Controllerクラスが配置されるパッケージをコ
+                                ンポーネントスキャン対象に追加する。(コードは割愛)
+                            </td>                            
+                        </tr>
+                        <tr>
+                            <td>DomainConfig</td>
+                            <td>サービス・インフラストラクチャレイヤの設定クラス</td>
+                            <td>
+                                Repositoryクラスを利用してSQSへのメッセージングを実装するため、
+                                このクラスでRepositoryが配置されるパッケージをコンポーネントスキャン対象とする。
+                                （コードは割愛)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>SqsCongif</td>
+                            <td>SQSの接続を行う設定クラス</td>
+                            <td>
+                                SQSへの接続情報を定義する。AmazonSDKが提供するライブラリ(AmazonSQSASync)を利用する。
+                                QueueMessageingTemplateクラスにAmazonSQSASyncを設定し、Bean定義する。
+                                また、AmazonSQSASyncのEndopointConfigurationには利用するSQSキューのリージョンとエンドポイント情報を設定する。
+                                なお、これらの情報は変更を用意するために<code>@Value</code>を用いて、appplication.ymlから取得する設定とする。
+                                <br>
+                                <pre><code>
+        package org.debugroom.mynavi.sample.aws.sqs.config;
+
+        import com.amazonaws.client.builder.AwsClientBuilder;
+        import com.amazonaws.services.sqs.AmazonSQSAsync;
+
+        import org.springframework.beans.factory.annotation.Autowired;
+        import org.springframework.beans.factory.annotation.Value;
+        import org.springframework.cloud.aws.messaging.core.QueueMessagingTemplate;
+        import org.springframework.context.annotation.Bean;
+        import org.springframework.context.annotation.Configuration;
+
+        @Configuration
+        public class SqsConfig {
+        
+            @Value("${queue.endpoint}")
+            private String queueEndpoint;
+            @Value("${cloud.aws.region.static}")
+            private String region;
+        
+            @Autowired
+            AmazonSQSAsync amazonSQSAsync;
+        
+            @Bean
+            public AwsClientBuilder.EndpointConfiguration endpointConfiguration(){
+                return new AwsClientBuilder.EndpointConfiguration(queueEndpoint, region);
+            }
+        
+            @Bean
+            public QueueMessagingTemplate queueMessagingTemplate(){
+                return new QueueMessagingTemplate(amazonSQSAsync);
+            }
+        
+        }
+                                </code></pre>
+                            </td>
+                        </tr>
+                    </table>
+                </p>
+                <h1 id="1-2">1-2.コントローラクラス実装</h1>
+                <p>
+                    画面操作を受け付けるコントローラクラスを実装する。コントローラクラスでは、SQSヘのメッセージ送信が実装されたSampleRepositoy
+                    と処理結果をJSONで返却する処理を実装する。なお、sampleRepository.saveはSQSにメッセージ送信する処理である。
+                    <br>
+                    <pre><code>
+        package org.debugroom.mynavi.sample.aws.sqs.app.web;
+
+        import org.debugroom.mynavi.sample.aws.sqs.domain.model.Sample;
+        import org.debugroom.mynavi.sample.aws.sqs.domain.repository.SampleRepository;
+        import org.springframework.beans.factory.annotation.Autowired;
+        import org.springframework.web.bind.annotation.GetMapping;
+        import org.springframework.web.bind.annotation.RequestMapping;
+        import org.springframework.web.bind.annotation.RestController;
+
+        @RestController
+        @RequestMapping("api/v1")
+        public class SampleRestController {
+        
+            @Autowired
+            SampleRepository sampleRepository;
+        
+            @GetMapping("/batch")
+            public String batch(String message){
+                sampleRepository.save(
+                        Sample.builder()
+                                .message(message)
+                                .build()
+                );
+                return "Queue accepted.";
+            }
+                    </code></pre>
+                </p>
+                <h1 id="1-3">1-3.Repositoryクラス実装</h1>
+                <p>
+                    SQSへメッセージ送信するRepositoryクラスを実装する。QueueMessagingTemplate のconvertAndSendメソッドを利用して、
+                    コントローラから渡されたメッセージを送信する。convertAndSendの第１引数にはSQSの名称を、第2引数にはmodelクラスの
+                    プロパティ(クライアントからクエリ情報が格納されたクラス)を指定する。
+                    <br>
+                    <pre><code>
+        package org.debugroom.mynavi.sample.aws.sqs.domain.repository;
+
+        import org.springframework.beans.factory.annotation.Autowired;
+        import org.springframework.cloud.aws.messaging.core.QueueMessagingTemplate;
+        import org.springframework.stereotype.Component;
+
+        import org.debugroom.mynavi.sample.aws.sqs.domain.model.Sample;
+
+        @Component
+        public class SampleRepositoryImpl implements SampleRepository{
+        
+            @Autowired
+            QueueMessagingTemplate queueMessagingTemplate;
+        
+            @Override
+            public void save(Sample sample) {
+                queueMessagingTemplate.convertAndSend("MA-saitoumsv-sqs-standard", sample.getMessage());
+            }
+        
+        }
+                    </code></pre>
+                </p>
+            </ul>     
+            <h1 id="2">2.バッチ処理アプリケーションの実装</h1>
+            <p>
+                SQSで受信したメッセージを元にバッチ処理を実行するアプリケーションを実装する。
+                バッチアプリはSpringBoot+SpringBatchで構築する。基本的な構築方法は以下にまとめているため、参照。
+                <br>    
+                <a href src="https://yushin1402.github.io/SpringBatchSample/index.html">SpringBatchサンプル</a>
+                <ul>
+                    <h1 id="2-1">2-1.Configクラスの実装</h1>
+                    <p>
+                        バッチ処理の実行定義を記述したConfigクラスを実装する。タスク、ジョブのメソッドを定義し、ジョブに組み込んでいくイメージで実装する。
+                        以下に、応用的なメソッドについて記述する。
+                        <p>
+                        <br>
+                        <pre><code>
+    @Bean
+    @StepScope
+    @Value("#{jobExecutionContext['paramBySampleTasklet']}")
+    public FlatFileItemReader<Sample> sampleFlatFileItemReader(String paramBySampleTasklet){
+
+        FlatFileItemReader<Sample> flatFileItemReader = new FlatFileItemReader<>();
+
+        flatFileItemReader.setResource(new DefaultResourceLoader().getResource(paramBySampleTasklet));
+
+        DefaultLineMapper<Sample> defaultLineMapper = new DefaultLineMapper<>();
+        DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer();
+        delimitedLineTokenizer.setNames("stepParam");
+        defaultLineMapper.setLineTokenizer(delimitedLineTokenizer);
+
+        BeanWrapperFieldSetMapper<Sample> beanWrapperFieldSetMapper = new BeanWrapperFieldSetMapper<>();
+        beanWrapperFieldSetMapper.setTargetType(Sample.class);
+        defaultLineMapper.setFieldSetMapper(beanWrapperFieldSetMapper);
+
+        flatFileItemReader.setLineMapper(defaultLineMapper);
+
+        return flatFileItemReader;
+                        </code></pre>
+                        <br>
+                        SQSで受信したメッセージを読み込むReaderのメソッドを実装している。
+                        </p>
+                        <p>
+                            <br>
+                            <pre><code>
+        @Bean
+        public TaskExecutor taskExecutor(){
+            SimpleAsyncTaskExecutor simpleAsyncTaskExecutor = new SimpleAsyncTaskExecutor();
+            simpleAsyncTaskExecutor.setConcurrencyLimit(10);
+            return simpleAsyncTaskExecutor;
+        }
+                            </code></pre>
+                            <br>
+                            マルチスレッドによるバッチ処理の並列実行を実装している。setConcurrencyLimit(10)により同時実行数は10に設定されている。
+                            なお、SpringBatchはステップをそのまま並列実行することが出来ない。本アプリでは、Stepを<code>partitioner</code>によって
+                            パーティション化することで、並列実行を可能にしている。パーティション化をすると、ステップの実行単位が自動的に分割され、実際に処理を行う
+                            workerスレッドに割り当てられる。全てのworkerスレッドが処理を完了したら、マスタースレッドに通知され、次のステップに遷移する。
+                        </p>
+                    </p>
+                    <h1 id="2-2">2-2.Taskletクラスの実装</h1>
+                    <p>
+                        <ol>
+                            <li>Step1のTaskletの実装</li>
+                            <p>
+                            サンプルとしてReaderから連携されたパラメータをログに出力するバッチ処理を実装する。
+                            同一ステップ内から連携されたパラメータはChunkContextから取得できる。
+                            <br>
+                            <code>String param = stepExecution.getJobParameters().getString("param");</code>
+                            <br>
+                            上記で取得した<code>param</code>は、Slf4Jを利用してログ出力する。また、
+                            Step1の出力をStep2に連携には、ExecutionContextを利用する。
+                            <br>
+                            <code>ExecutionContext jobExecutionContext = stepExecution.getJobExecution().getExecutionContext()</code>
+                            <br>
+                            上記で取得したパラメータは<code>ExecutionContext#put</code>でテキストファイルに出力しておく。
+                            <br>
+                            <code>jobExecutionContext.put("paramBySampleTasklet", "/test.txt");</code>
+                            <br>
+                            最後に、<code>RepeatStatus</code>を利用して終了ステータスを設定してリターンする。
+                            <br>
+                            <code>return RepeatStatus.FINISHED</code>
+                            <br>
+                            <p>
+                                <pre><code>
+        package org.debugroom.mynavi.sample.aws.sqs.app.batch.step;
+        import org.springframework.batch.core.StepContribution;
+        import org.springframework.batch.core.StepExecution;
+        import org.springframework.batch.core.scope.context.ChunkContext;
+        import org.springframework.batch.core.step.tasklet.Tasklet;
+        import org.springframework.batch.item.ExecutionContext;
+        import org.springframework.batch.repeat.RepeatStatus;
+        
+        import lombok.extern.slf4j.Slf4j;
+        
+        @Slf4j
+        public class SampleTasklet implements Tasklet {
+        
+            @Override
+            public RepeatStatus execute(StepContribution stepContribution,
+                                        ChunkContext chunkContext) throws Exception {
+        
+        
+                StepExecution stepExecution = chunkContext.getStepContext().getStepExecution();
+        
+                String param = stepExecution.getJobParameters().getString("param");
+        
+                log.info(this.getClass().getName() + "#execute() starteds. input param : " + param);
+        
+                ExecutionContext jobExecutionContext = stepExecution.getJobExecution().getExecutionContext();
+        
+                jobExecutionContext.put("paramBySampleTasklet", "/test.txt");
+        
+                return RepeatStatus.FINISHED;
+        
+            }
+        
+        }
+
+                                </code></pre>
+                            </p>
+                            <li>Step2のReaderの実装</li>
+                            <p>
+                            続いて、Step1が<code>jobExecutionContext</code>に設定したパラメータをインプットに動作する
+                            Step2を実装する。まずはStep1から連携されたパラメータを読み込むReaaderを実装する。
+                            Readerは既にBatchAppConfigクラス上で実装済みとなる。
+                            Step1のtaskletで設定したパラメータを読み込み、インプットが記述されたテキストファイルのパスを読み込む。
+                            <br>
+                            <code>flatFileItemReader.setResource(new DefaultResourceLoader().getResource(paramBySampleTasklet));</code>
+                            <br>
+                            諸々のファイル読み込み設定(区切り文字設定など)を行ったのち、読み込んだ値をモデルクラスにマッピングする。
+                            <br>
+                            <code>beanWrapperFieldSetMapper.setTargetType(Sample.class);</code>
+                            モデルクラス(Sampleクラス)側には変数<code>stepParam</code>が定義されており、以下の記述でこれにマッピングしている。
+                            <br>
+                            <code>delimitedLineTokenizer.setNames("stepParam");</code>
+                            <br>
+                            <pre><code>
+        @Bean
+        @StepScope
+        @Value("#{jobExecutionContext['paramBySampleTasklet']}")
+        public FlatFileItemReader<Sample> sampleFlatFileItemReader(String paramBySampleTasklet){
+    
+            FlatFileItemReader<Sample> flatFileItemReader = new FlatFileItemReader<>();
+    
+            flatFileItemReader.setResource(new DefaultResourceLoader().getResource(paramBySampleTasklet));
+    
+            DefaultLineMapper<Sample> defaultLineMapper = new DefaultLineMapper<>();
+            DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer();
+            delimitedLineTokenizer.setNames("stepParam");
+            defaultLineMapper.setLineTokenizer(delimitedLineTokenizer);
+    
+            BeanWrapperFieldSetMapper<Sample> beanWrapperFieldSetMapper = new BeanWrapperFieldSetMapper<>();
+            beanWrapperFieldSetMapper.setTargetType(Sample.class);
+            defaultLineMapper.setFieldSetMapper(beanWrapperFieldSetMapper);
+    
+            flatFileItemReader.setLineMapper(defaultLineMapper);
+    
+            return flatFileItemReader;
+        }
+                            </code></pre>
+                        </p>
+                        <li>Partitionerクラスの実装</li>
+                        <p>
+                            このあと、Readerで読み込んだ値を加工するProessorクラスやDBなどに書き込むWriteクラスを実装するがその前に、これらのクラスはパーティション化することで
+                            並列実行するため、Partitionaerクラスの実装が必要となる。パーティション化の宣言自体はBatchAppConfigで実装済みだが、Processorクラス上では、
+                            並列実行させるスレッド数に応じたパーティションIDの作成や、パーティションIDとIDの値をExecutionContext#putString
+                            に設定し、スレッドを識別する文字列とExecutionContextをペアでMapに設定して返却する処理を実装しなければならない。
+                            まずはMapを以下の通り作成する。型にString(パーティションID)とExectutionContextを設定したMapインスタンスを作成する。
+                            <br>
+                            <code>Map<String, ExecutionContext> executionContextMap = new HashMap<>();</code>
+                            <br>
+                            次に、while分で読み込む入力値をバッファに設定する。
+                            <br>
+                            <code>
+                                InputStream inputStream = getClass().getResourceAsStream(param);<br>
+                                Reader reader = new InputStreamReader(inputStream);<br>
+                                BufferedReader bufferedReader = new BufferedReader(reader);)<br>
+                            </code>
+                            <br>
+                            読み込んだ入力値が空になるまでwhile分を回し、各入力値にパーティションIDを付与する。
+                            これにより、各workerスレッドが処理するパーティションIDが設定され、並列処理が可能となる。
+                            <br>
+                            <code>
+                                String readLine;<br>
+                                int index = 0;<br>
+                                while ((readLine = bufferedReader.readLine()) != null){<br>
+                                    ExecutionContext executionContext = new ExecutionContext();<br>
+                                    executionContext.putString("partitionId", readLine);<br>
+                                    executionContextMap.put("partition" + index, executionContext);<br>
+                                    index++;<br>
+                                } <br>
+                                <br>                 
+                            </code>
+                        </p>
+                        <li>Processorクラスの実装</li>
+                        <p>
+                            Processorクラスでは、stepExecutionからReaderが設定した入力値を読み込み、ログ出力する処理を記述する。
+                            サンプルとして、モデルクラスのgetStepParamの値とPartitionIDが一致し場合にログ出力を行う処理を実装した。
+                            <br>
+                            <pre><code>
+    @Value("#{stepExecution}")
+    private StepExecution stepExecution;
+
+    @Override
+    public Sample process(Sample sample) throws Exception {
+        ExecutionContext stepExecutionContext = stepExecution.getExecutionContext();
+        ExecutionContext jobExecutionContext =
+                stepExecution.getJobExecution().getExecutionContext();
+
+        if(Objects.equals(sample.getStepParam(), stepExecutionContext.get("partitionId"))){
+            log.info(this.getClass().getName()
+                    + " started. sample.stepParam:" + sample.getStepParam()
+                    + " stepExecution.partitionId:" + stepExecutionContext.getString("partitionId"));
+        }
+
+        return sample;                                
+                            </code></pre>
+                        </p>
+                        <li>Writerクラスの実装</li>
+                        <p>
+                            Processorクラスとほぼ同じような内容を実装している。
+                            <pre><code>
+        samples.stream()
+                .filter(sample -> Objects.equals(((Sample) sample).getStepParam(), stepExecutionContext.get("partitionId")))
+                .forEach(sample -> {
+                    log.info(this.getClass().getName() + " sample.stepParam:" + ((Sample) sample).getStepParam());
+                });
+
+        stepExecutionContext.put("status", "complete!");
+                            </code></pre>
+
+                        </p>
+                    </ol>
+                    </p>
+                </ul>
+            </p>
+            <h1 id="3">1.Consumerアプリケーション実装</h1>
+            <p>
+                SpringBatchアプリケーションを呼び出すConsumerアプリケーションを実装する。
+                このアプリケーションは、SQSでメッセージをポーリングして取得し、取得値を元にSpringBatchアプリケーションを実行する。
+                <ol>
+                    <li>Configクラスの実装</li>
+                    <p>
+                        SQSに接続するための設定を定義したSqsConfigクラスを実装する。実装方法はProducerアプリケーションで作成したものと同様。
+                    </p>
+                    <li>listenerクラスの実装</li>
+                    <p>
+                        続いて、SQSへのポーリングを実行するlisterクラスを実装する。
+                        クラスに<code>@EnableSqs</code>を付与することで、SQSへのアクセスが可能となる。
+                        また、SQSからメッセージを取得した後にSpringBatchアプリケーションを実行する処理に以下を
+                        付与することでSQSポーリングが有効化される。<br>
+                        <code>@SqsListener(value = "MA-saitoumsv-sqs-standard", deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)</code>
+                    </p>
+                </ol>
+                <p>
+                    (2022/1/16 コメント)<br>
+                    consumerアプリのSQSリスナーからspring-batchアプリケーションで実装したJobを実行できる仕組みが理解出来ていない。
+                    consumerアプリのMessageListnerクラス側でインジェクションしたJobインスタンスをJobLauncherに渡して、SpringBatchを実行していることは理解できるが、
+                    なぜ、spring-batchアプリ側の別パッケージで定義したJobインスタンスがBean登録出来ているかが分からない。
+                    SpringBatchのリファレンス上も、別パッケージのJobインスタンスを自動でBean登録するような記載はない。
+                    (JobLauncherが@EnableBatchProcessingにより自動でBean登録される記載はあるのでこのあたりが関係している？)
+                </p>
+            </p>
+        </p>
+    </div>
+</body>
+</html>
