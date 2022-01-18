@@ -12,7 +12,7 @@ RUN sed -i s/\$releasever/6/g /etc/yum.repos.d/epel-apache-maven.repo
 RUN yum install -y apache-maven
 ENV JAVA_HOME /etc/alternatives/jre
 RUN git clone https://github.com/yushin1402/aws-cloudnative-sqsapp.git /usr/local/aws-cloudnative-sqsapp
-RUN mvn install -f /usr/local/aws-cloudnative-webapp/pom.xml
+RUN mvn install -f /usr/local/aws-cloudnative-sqsapp/pom.xml
 RUN cp /etc/localtime /etc/localtime.org
 RUN ln -sf  /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 EXPOSE 8080
