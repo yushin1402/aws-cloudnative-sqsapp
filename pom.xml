@@ -12,7 +12,7 @@
     <module>spring-batch</module>
     <module>sqs-consumer</module>
     <module>sqs-producer</module>
-    <module>lambda-sqs-producer</module>
+<!--    <module>lambda-sqs-producer</module> -->
     <module>s3-event-trigger</module>
   </modules>
 
