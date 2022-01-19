@@ -428,7 +428,7 @@
                     </p>
                 </ul>
             </p>
-            <h1 id="3">1.Consumerアプリケーション実装</h1>
+            <h1 id="3">3.Consumerアプリケーション実装</h1>
             <p>
                 SpringBatchアプリケーションを呼び出すConsumerアプリケーションを実装する。
                 このアプリケーションは、SQSでメッセージをポーリングして取得し、取得値を元にSpringBatchアプリケーションを実行する。
@@ -455,6 +455,26 @@
                     (JobLauncherが@EnableBatchProcessingにより自動でBean登録される記載はあるのでこのあたりが関係している？)
                 </p>
             </p>
+            <h1 id="4">4.ECSへのデプロイ</h1>
+            <ol>
+                <li>Producerアプリケーション、spring-batchアプリケーション、ConsumerアプリケーションのDockerfileを作成する。</li>
+                <li>以下コマンドでDockerイメージをビルドする。</li>
+                <p>
+                    <code>docker build sqs-producer/ -t yushin1402/aws-cloudnative-sqsapp-producer:latest --no-cache</code>
+                    <br>
+                    （※)何度かビルドすると、キャッシュがたまる。キャッシュを利用すると、アプリケーションの変更がイメージに反映されない場合がある。
+                         この場合は上記の通り、<code>--no-chache</code>オプションで、キャッシュを利用しないでビルドする必要がある。
+                         アプリに変更を加えたにも関わらず、各ビルドステップで「Layer already exists」と出力された場合はイメージに変更出来ていない可能性が高い。
+                         実際に変更が反映されたかを確認したい場合は以下コマンドでコンテナにログインする。
+                         <br>
+                         <code>docker run -d -p 1080:8080 yushin1402/aws-cloudnative-sqsapp-producer:latest java -jar -Dspring.profiles.active=dev /usr/local/aws-cloudnative-sqsapp/sqs-producer/target/sqs-producer-0.0.1-SNAPSHOT.jar</code>
+                         <br>
+                         <code>docker exec -it fb79902a8ae4 /bin/bash</code>
+                </p>
+                <li>DockerHubにイメージをプッシュする。</li>
+                <li>ECSのタスク定義に作成したイメージを指定する。</li>
+                <li>ECSのサービスを作成する。この際、SQSFullAccessポリシーをアタッチしたIAMロールをサービス実行ロールに割り当てる必要がある。</li>
+            </ol>
         </p>
     </div>
 </body>
