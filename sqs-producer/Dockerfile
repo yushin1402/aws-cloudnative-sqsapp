@@ -17,4 +17,4 @@ RUN cp /etc/localtime /etc/localtime.org
 RUN ln -sf  /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 EXPOSE 8080
 
-CMD java -jar -Dspring.profiles.active=production /usr/local/aws-cloudnative-sqsapp/sqs-producer/target/sqs-producer-0.0.1-SNAPSHOT.jar
+CMD java -jar -Dspring.profiles.active=dev /usr/local/aws-cloudnative-sqsapp/sqs-producer/target/sqs-producer-0.0.1-SNAPSHOT.jar
