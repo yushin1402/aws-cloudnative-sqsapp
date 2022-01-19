@@ -16,7 +16,7 @@ public class SampleRestController {
 
     @GetMapping("/batch")
     public String batch(String message){
-        sampleRepository.save(
+        sampleRepository.save(a
                 Sample.builder()
                         .message(message)
                         .build()
