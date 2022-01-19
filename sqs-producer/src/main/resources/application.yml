@@ -5,6 +5,8 @@ cloud:
   aws:
     stack:
       auto: false
+    region:
+     static: ap-northeast-1
 queue:
   endpoint: https://sqs.ap-northeast-1.amazonaws.com/626394096352/MA-saitoumsv-sqs-standard
   name: MA-saitoumsv-sqs-standard
