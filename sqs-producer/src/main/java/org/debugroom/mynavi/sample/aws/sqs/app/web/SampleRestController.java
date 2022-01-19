@@ -23,5 +23,10 @@ public class SampleRestController {
         );
         return "Queue accepted.";
     }
+    
+    @GetMapping("/healthcheck")
+    public String hc() {
+    	return "Healty";
+    }
 
 }
