@@ -13,7 +13,7 @@ RUN yum install -y apache-maven
 ENV JAVA_HOME /etc/alternatives/jre
 RUN git clone https://github.com/yushin1402/aws-cloudnative-sqsapp.git /usr/local/aws-cloudnative-sqsapp
 RUN mvn install -f /usr/local/aws-cloudnative-sqsapp/spring-batch/pom.xml
-RUN mkdir /usr/local/aws-cloudnative-sqsapp/sqs-consumer/lib ; \
+RUN mkdir -p /usr/local/aws-cloudnative-sqsapp/sqs-consumer/lib ; \
     cp /usr/local/aws-cloudnative-sqsapp/spring-batch/target/spring-batch-0.0.1-SNAPSHOT.jar /usr/local/aws-cloudnative-sqsapp/sqs-consumer/lib
 RUN mvn clean install -f /usr/local/aws-cloudnative-sqsapp/sqs-consumer/pom.xml
 RUN cp /etc/localtime /etc/localtime.org
