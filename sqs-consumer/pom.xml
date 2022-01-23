@@ -37,7 +37,13 @@
 			<artifactId>spring-batch</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-
+<!--		<dependency>
+ 			<groupId>org.debugroom</groupId>
+			<artifactId>spring-batch</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+			<scope>system</scope>
+			<systemPath>${basedir}/lib/spring-batch-0.0.1-SNAPSHOT.jar</systemPath>
+		</dependency>--> 
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -68,7 +74,36 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+    			<groupId>org.apache.maven.plugins</groupId>
+    			<artifactId>maven-compiler-plugin</artifactId>
+    			<configuration>
+        			<source>1.8</source>
+        			<target>1.8</target>
+    			</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-install-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>install-external</id>
+						<phase>clean</phase>
+						<configuration>
+							<file>${basedir}/lib/spring-batch-0.0.1-SNAPSHOT.jar</file>
+							<repositoryLayout>default</repositoryLayout>
+							<groupId>org.debugroom</groupId>
+							<artifactId>spring-batch</artifactId>
+							<version>0.0.1-SNAPSHOT</version>
+							<packaging>jar</packaging>
+							<generatePom>true</generatePom>
+						</configuration>
+						<goals>
+							<goal>install-file</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
-
 </project>

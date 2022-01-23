@@ -456,25 +456,79 @@
                 </p>
             </p>
             <h1 id="4">4.ECSへのデプロイ</h1>
-            <ol>
-                <li>Producerアプリケーション、spring-batchアプリケーション、ConsumerアプリケーションのDockerfileを作成する。</li>
-                <li>以下コマンドでDockerイメージをビルドする。</li>
-                <p>
-                    <code>docker build sqs-producer/ -t yushin1402/aws-cloudnative-sqsapp-producer:latest --no-cache</code>
-                    <br>
-                    （※)何度かビルドすると、キャッシュがたまる。キャッシュを利用すると、アプリケーションの変更がイメージに反映されない場合がある。
-                         この場合は上記の通り、<code>--no-chache</code>オプションで、キャッシュを利用しないでビルドする必要がある。
-                         アプリに変更を加えたにも関わらず、各ビルドステップで「Layer already exists」と出力された場合はイメージに変更出来ていない可能性が高い。
-                         実際に変更が反映されたかを確認したい場合は以下コマンドでコンテナにログインする。
-                         <br>
-                         <code>docker run -d -p 1080:8080 yushin1402/aws-cloudnative-sqsapp-producer:latest java -jar -Dspring.profiles.active=dev /usr/local/aws-cloudnative-sqsapp/sqs-producer/target/sqs-producer-0.0.1-SNAPSHOT.jar</code>
-                         <br>
-                         <code>docker exec -it fb79902a8ae4 /bin/bash</code>
-                </p>
-                <li>DockerHubにイメージをプッシュする。</li>
-                <li>ECSのタスク定義に作成したイメージを指定する。</li>
-                <li>ECSのサービスを作成する。この際、SQSFullAccessポリシーをアタッチしたIAMロールをサービス実行ロールに割り当てる必要がある。</li>
-            </ol>
+            <ul>
+                <h1 id="4-1">4-1.Priducerアプリケーションのデプロイ</h1>
+                <ol>
+                    <li>ProducerアプリケーションのDockerfileを作成する。</li>
+                    <li>以下コマンドでDockerイメージをビルドする。</li>
+                    <p>
+                        <code>docker build sqs-producer/ -t yushin1402/aws-cloudnative-sqsapp-producer:latest --no-cache</code>
+                        <br>
+                        （※)何度かビルドすると、キャッシュがたまる。キャッシュを利用すると、アプリケーションの変更がイメージに反映されない場合がある。
+                             この場合は上記の通り、<code>--no-chache</code>オプションで、キャッシュを利用しないでビルドする必要がある。
+                             アプリに変更を加えたにも関わらず、各ビルドステップで「Layer already exists」と出力された場合はイメージに変更出来ていない可能性が高い。
+                             実際に変更が反映されたかを確認したい場合は以下コマンドでコンテナにログインする。
+                             <br>
+                             <code>docker run -d -p 1080:8080 yushin1402/aws-cloudnative-sqsapp-producer:latest java -jar -Dspring.profiles.active=dev /usr/local/aws-cloudnative-sqsapp/sqs-producer/target/sqs-producer-0.0.1-SNAPSHOT.jar</code>
+                             <br>
+                             <code>docker exec -it fb79902a8ae4 /bin/bash</code>
+                    </p>
+                    <li>DockerHubにイメージをプッシュする。</li>
+                    <li>ECSのタスク定義に作成したイメージを指定する。</li>
+                    <li>ECSのサービスを作成する。この際、SQSFullAccessポリシーをアタッチしたIAMロールをサービス実行ロールに割り当てる必要がある。</li>
+                </ol>
+                <h1 id="4-2">4-2.ConsumerアプリとSpringBatchアプリのデプロイ</h1>
+                ConsumerアプリとSpringBatchアプリは同じコンテナ内にデプロイする。(ConsumerアプリのリスナーがSpringBatchアプリを実行する構成のため)
+                このため、SpringBatchのプロジェクトから生成したJarライブラリをConsumerアプリの参照ライブラリに組み込む形でビルド処理を実装する。
+                <br>
+                <ol>
+                    <li>SpringBatchアプリのJar生成</li>
+                    <p>
+                        STSのMavenビルドで実行
+                    </p>
+                    <li>Consumerアプリのpom.xml修正</li>
+                    <p>
+                        ConsumerアプリのプロジェクトをMavenクリーンした際に作成したSpringBatchアプリのライブラリをインストールした上で依存関係を解決するよう、設定を記述する。
+                        <br>
+                        [Dependancy]
+                        <br>
+                        <pre><code>
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.debugroom&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-batch&lt;/artifactId&gt;
+            &lt;version&gt;0.0.1-SNAPSHOT&lt;/version&gt;
+        &lt;/dependency&gt;                            
+                        </code></pre>
+                        <br><br>
+                        [Build]
+                        <br>
+                        <pre><code>
+		&lt;plugin&gt;
+			&lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+			&lt;artifactId&gt;maven-install-plugin&lt;/artifactId&gt;
+			&lt;executions&gt;
+				&lt;execution&gt;
+					&lt;id&gt;install-external&lt;/id&gt;
+					&lt;phase&gt;clean&lt;/phase&gt;
+					&lt;configuration&gt;
+						&lt;file&gt;${basedir}/lib/spring-batch-0.0.1-SNAPSHOT.jar&lt;/file&gt;
+						&lt;repositoryLayout&gt;default&lt;/repositoryLayout&gt;
+						&lt;groupId&gt;org.debugroom&lt;/groupId&gt;
+						&lt;artifactId&gt;spring-batch&lt;/artifactId&gt;
+						&lt;version&gt;0.0.1-SNAPSHOT&lt;/version&gt;
+						&lt;packaging&gt;jar&lt;/packaging&gt;
+						&lt;generatePom&gt;true&lt;/generatePom&gt;
+					&lt;/configuration&gt;
+					&lt;goals&gt;
+						&lt;goal&gt;install-file&lt;/goal&gt;
+					&lt;/goals&gt;
+				&lt;/execution&gt;
+			&lt;/executions&gt;
+		&lt;/plugin&gt;
+                        </code></pre>
+                    </p>
+                </ol>
+            </ul>
         </p>
     </div>
 </body>
