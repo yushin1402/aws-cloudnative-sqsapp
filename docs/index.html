@@ -484,7 +484,7 @@
                 <ol>
                     <li>SpringBatchアプリのJar生成</li>
                     <p>
-                        STSのMavenビルドで実行
+                        STSのMavenビルドで実行する。作成したJarファイルは、Consumerアプリのプロジェクトルート/lib/にコピーしておく。(このパスをConsumerアプリのpom.xmlで指定する。)
                     </p>
                     <li>Consumerアプリのpom.xml修正</li>
                     <p>
@@ -527,7 +527,151 @@
 		&lt;/plugin&gt;
                         </code></pre>
                     </p>
+                    <li>STSの実行メニューから、Mavenクリーンを実行する。</li>
+                    <li>STSの実行メニューから、ビルドを行う。SUCCESSすればOK。</li>
+                    <li>上記と同様の処理を行うDockerfileを作成する。</li>
+                    <p>
+                    </p>
                 </ol>
+                <br>
+                (2022/1/24 コメント)
+                <p>
+                    上記の通り、spring-batchのjarをライブラリとしてsqs-consumerに取り込もうとしたが、
+                    spring-batchのjarはspring-bootとして起動させることが前提の実行可能jarであり、ライブラリとして上手く認識されなかった。
+                    他のjarライブラリと比較しても中身の構成が明らかに違う。
+                </p>
+                <h1 id="質問">質問.sqs-consumerアプリのビルド方法について</h1>
+                <p>
+                    sqs-consumerアプリをビルドして、ECSにデプロイしたところ、次のようなエラーとなってはまっています。
+                    <br>
+                    <pre><code>
+    ***************************
+    APPLICATION FAILED TO START
+    ***************************
+    
+    Description:
+    
+    Field jobLauncher in org.debugroom.mynavi.sample.aws.sqs.app.listener.MessageListener required a bean of type 'org.springframework.batch.core.launch.JobLauncher' that could not be found.
+    
+    The injection point has the following annotations:
+            - @org.springframework.beans.factory.annotation.Autowired(required=true)
+    Action:    
+    Consider defining a bean of type 'org.springframework.batch.core.launch.JobLauncher' in your configuration.
+                    </code></pre>
+                    <br>
+                    <p>
+                    本件について、sqs-consumerアプリをどのようにビルドすれば良いか、教えていただけないでしょうか。
+                    以下の図のようなイメージをしていますが、コンテナ上にデプロイするjarファイル内でsqs-consumerとspring-batchアプリの
+                    依存関係をどのように解決すればよいか、分からずはまってしまっている状況です。
+                    </p>
+                    <br>
+                    <img src="image/sqs-executeonsts.png">
+                    <br>
+                    <br>
+
+                    <p>[調査状況]</p>
+                    <p>
+                    STS上では以下の通り、正常にアプリケーションの実行が出来ています。
+                    </p>
+                    <img src="image/sts1.png">
+                    <br>
+                    <img src="image/sts2.png">
+                    <br>
+                    <p>[実行結果]</p>
+                    <pre><code>
+            .   ____          _            __ _ _
+            /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+           ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+            \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+             '  |____| .__|_| |_|_| |_\__, | / / / /
+            =========|_|==============|___/=/_/_/_/
+           [32m :: Spring Boot :: [39m      [2m (v2.1.7.RELEASE)[0;39m
+           
+           [36mo.d.mynavi.sample.aws.sqs.config.App    [0;39m [2m:[0;39m Starting App on DESKTOP-VU8QFTR with PID 13568 (C:\study\AWS\mynavi-sample-aws-sqs\sqs-consumer\target\classes started by user in C:\study\AWS\mynavi-sample-aws-sqs\sqs-consumer)
+           [36mo.d.mynavi.sample.aws.sqs.config.App    [0;39m [2m:[0;39m The following profiles are active: dev
+           [36mtrationDelegate$BeanPostProcessorChecker[0;39m [2m:[0;39m Bean 'credentialsProvider' of type [org.springframework.cloud.aws.core.credentials.CredentialsProviderFactoryBean] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+           [36mtrationDelegate$BeanPostProcessorChecker[0;39m [2m:[0;39m Bean 'credentialsProvider' of type [com.amazonaws.auth.DefaultAWSCredentialsProviderChain] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+           [36mo.s.j.d.e.EmbeddedDatabaseFactory       [0;39m [2m:[0;39m Starting embedded database: url='jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false', username='sa'
+           [36mo.s.b.c.c.a.DefaultBatchConfigurer      [0;39m [2m:[0;39m No transaction manager was provided, using a DataSourceTransactionManager
+           [36mo.s.b.c.r.s.JobRepositoryFactoryBean    [0;39m [2m:[0;39m No database type set, using meta data indicating: H2
+           [36mo.s.b.c.l.support.SimpleJobLauncher     [0;39m [2m:[0;39m No TaskExecutor has been set, defaulting to synchronous executor.
+           [36mo.s.b.c.l.AbstractListenerFactoryBean   [0;39m [2m:[0;39m org.springframework.batch.item.ItemWriter is an interface. The implementing class will not be queried for annotation based listener configurations. If using @StepScope on a @Bean method, be sure to return the implementing class so listener annotations can be used.
+           [36mo.s.b.c.l.AbstractListenerFactoryBean   [0;39m [2m:[0;39m org.springframework.batch.item.ItemProcessor is an interface. The implementing class will not be queried for annotation based listener configurations. If using @StepScope on a @Bean method, be sure to return the implementing class so listener annotations can be used.
+           [36mo.s.s.concurrent.ThreadPoolTaskExecutor [0;39m [2m:[0;39m Initializing ExecutorService
+           [36mo.d.mynavi.sample.aws.sqs.config.App    [0;39m [2m:[0;39m Started App in 6.869 seconds (JVM running for 8.021)
+           
+                    </code></pre>
+                    <p>
+                    一方で、ビルドしたjarファイルをjavaコマンドで直接実行すると、以下のようなエラーとなります。
+                    コンテナ上で出力されているエラーとはまた別のエラーです。
+                    </p>
+                    <br>
+        <pre><code>
+            c:\study\AWS\mynavi-sample-aws-sqs\sqs-consumer\target>java -jar sqs-consumer-0.0.1-SNAPSHOT.jar
+            .   ____          _            __ _ _
+           /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+          ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+           \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+            '  |____| .__|_| |_|_| |_\__, | / / / /
+           =========|_|==============|___/=/_/_/_/
+           :: Spring Boot ::        (v2.1.7.RELEASE)
+          
+          2022-01-24 00:16:37.572  INFO 13328 --- [           main] o.d.mynavi.sample.aws.sqs.config.App     : Starting App v0.0.1-SNAPSHOT on DESKTOP-VU8QFTR with PID 13328 (C:\study\AWS\mynavi-sample-aws-sqs\sqs-consumer\target\sqs-consumer-0.0.1-SNAPSHOT.jar started by user in c:\study\AWS\mynavi-sample-aws-sqs\sqs-consumer\target)
+          2022-01-24 00:16:37.575  INFO 13328 --- [           main] o.d.mynavi.sample.aws.sqs.config.App     : The following profiles are active: dev
+          2022-01-24 00:16:43.069  WARN 13328 --- [           main] s.c.a.AnnotationConfigApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'messageListener': Lookup method resolution failed; nested exception is java.lang.IllegalStateException: Failed to introspect Class [org.debugroom.mynavi.sample.aws.sqs.app.listener.MessageListener] from ClassLoader [org.springframework.boot.loader.LaunchedURLClassLoader@1698c449]
+          2022-01-24 00:16:43.088  INFO 13328 --- [           main] ConditionEvaluationReportLoggingListener :
+          
+          Error starting ApplicationContext. To display the conditions report re-run your application with 'debug' enabled.
+          2022-01-24 00:16:43.100 ERROR 13328 --- [           main] o.s.boot.SpringApplication               : Application run failed
+          
+          org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'messageListener': Lookup method resolution failed; nested exception is java.lang.IllegalStateException: Failed to introspect Class [org.debugroom.mynavi.sample.aws.sqs.app.listener.MessageListener] from ClassLoader [org.springframework.boot.loader.LaunchedURLClassLoader@1698c449]
+                  at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors(AutowiredAnnotationBeanPostProcessor.java:265) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.determineConstructorsFromBeanPostProcessors(AbstractAutowireCapableBeanFactory.java:1269) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1184) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:555) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:515) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:320) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:318) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:845) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:877) ~[spring-context-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:549) ~[spring-context-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:743) ~[spring-boot-2.1.7.RELEASE.jar!/:2.1.7.RELEASE]
+                  at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:390) ~[spring-boot-2.1.7.RELEASE.jar!/:2.1.7.RELEASE]
+                  at org.springframework.boot.SpringApplication.run(SpringApplication.java:312) ~[spring-boot-2.1.7.RELEASE.jar!/:2.1.7.RELEASE]
+                  at org.springframework.boot.SpringApplication.run(SpringApplication.java:1214) ~[spring-boot-2.1.7.RELEASE.jar!/:2.1.7.RELEASE]
+                  at org.springframework.boot.SpringApplication.run(SpringApplication.java:1203) ~[spring-boot-2.1.7.RELEASE.jar!/:2.1.7.RELEASE]
+                  at org.debugroom.mynavi.sample.aws.sqs.config.App.main(App.java:10) ~[classes!/:0.0.1-SNAPSHOT]
+                  at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+                  at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62) ~[na:na]
+                  at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
+                  at java.base/java.lang.reflect.Method.invoke(Method.java:564) ~[na:na]
+                  at org.springframework.boot.loader.MainMethodRunner.run(MainMethodRunner.java:48) ~[sqs-consumer-0.0.1-SNAPSHOT.jar:0.0.1-SNAPSHOT]
+                  at org.springframework.boot.loader.Launcher.launch(Launcher.java:87) ~[sqs-consumer-0.0.1-SNAPSHOT.jar:0.0.1-SNAPSHOT]
+                  at org.springframework.boot.loader.Launcher.launch(Launcher.java:51) ~[sqs-consumer-0.0.1-SNAPSHOT.jar:0.0.1-SNAPSHOT]
+                  at org.springframework.boot.loader.JarLauncher.main(JarLauncher.java:52) ~[sqs-consumer-0.0.1-SNAPSHOT.jar:0.0.1-SNAPSHOT]
+          Caused by: java.lang.IllegalStateException: Failed to introspect Class [org.debugroom.mynavi.sample.aws.sqs.app.listener.MessageListener] from ClassLoader [org.springframework.boot.loader.LaunchedURLClassLoader@1698c449]
+                  at org.springframework.util.ReflectionUtils.getDeclaredMethods(ReflectionUtils.java:507) ~[spring-core-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.util.ReflectionUtils.doWithMethods(ReflectionUtils.java:404) ~[spring-core-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.util.ReflectionUtils.doWithMethods(ReflectionUtils.java:389) ~[spring-core-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors(AutowiredAnnotationBeanPostProcessor.java:248) ~[spring-beans-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  ... 25 common frames omitted
+          Caused by: java.lang.NoClassDefFoundError: org/springframework/batch/core/repository/JobExecutionAlreadyRunningException
+                  at java.base/java.lang.Class.getDeclaredMethods0(Native Method) ~[na:na]
+                  at java.base/java.lang.Class.privateGetDeclaredMethods(Class.java:3244) ~[na:na]
+                  at java.base/java.lang.Class.getDeclaredMethods(Class.java:2387) ~[na:na]
+                  at org.springframework.util.ReflectionUtils.getDeclaredMethods(ReflectionUtils.java:489) ~[spring-core-5.1.9.RELEASE.jar!/:5.1.9.RELEASE]
+                  ... 28 common frames omitted
+          Caused by: java.lang.ClassNotFoundException: org.springframework.batch.core.repository.JobExecutionAlreadyRunningException
+                  at java.base/java.net.URLClassLoader.findClass(URLClassLoader.java:435) ~[na:na]
+                  at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:589) ~[na:na]
+                  at org.springframework.boot.loader.LaunchedURLClassLoader.loadClass(LaunchedURLClassLoader.java:93) ~[sqs-consumer-0.0.1-SNAPSHOT.jar:0.0.1-SNAPSHOT]
+                  at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:522) ~[na:na]
+                  ... 32 common frames omitted
+          
+                    </code></pre>
+                </p>
             </ul>
         </p>
     </div>
