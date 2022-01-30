@@ -7,10 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.debugroom.mynavi.sample.aws.sqs.app.batch.*;
 
-@ComponentScan("org.debugroom.mynavi.sample.aws.sqs.app.listener,org.debugroom.mynavi.sample.aws.sqs.app.batch")
+@ComponentScan("org.debugroom.mynavi.sample.aws.sqs.app.listener")
 @Configuration
+
 public class SqsConfig {
 
     @Value("${queue.endpoint}")
@@ -21,9 +21,8 @@ public class SqsConfig {
     @Autowired
     AmazonSQSAsync amazonSQSAsync;
 
-    @Bean
+   @Bean
     public AwsClientBuilder.EndpointConfiguration endpointConfiguration(){
         return new AwsClientBuilder.EndpointConfiguration(queueEndpoint, region);
-    }
-
+	}
 }

@@ -24,12 +24,14 @@ import org.springframework.stereotype.Component;
 public class MessageListener {
 
     @Autowired
+    Job job;
+	
+	@Autowired
     JobLauncher jobLauncher;
 
-    @Autowired
-    Job job;
 
-    @SqsListener(value = "MA-saitoumsv-sqs-standard", deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
+    
+	@SqsListener(value = "MA-saitoumsv-sqs-standard", deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
     public void onMessage(String message) throws
             JobExecutionAlreadyRunningException, JobRestartException,
             JobInstanceAlreadyCompleteException, JobParametersInvalidException {
@@ -39,6 +41,7 @@ public class MessageListener {
         JobParameters jobParameters = new JobParameters(jobParameterMap);
         JobExecution jobExecution = jobLauncher.run(job, jobParameters);
         ExecutionContext executionContext = jobExecution.getExecutionContext();
+        System.out.println("testttttt");
     }
 
 }
